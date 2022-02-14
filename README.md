@@ -1,6 +1,6 @@
 # gandi-ddns-update
 
-## Description
+### Description
 This is a script that gets the current external IP of your router then connects to the Gandi
 LiveDNS API and updates your subdomain DNS record with your current IP if necessary.
 
