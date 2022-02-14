@@ -1,12 +1,12 @@
+#!/usr/bin/bash
 
-# This script get your current external IP of your router then connects to the Gandi
+# gandi-ddns
+
+# This is a script that gets the current external IP of your router then connects to the Gandi
 # LiveDNS API and updates your subdomain DNS record with your current IP if necessary.
 
-# Howto generate your LiveDNS API key : https://account.gandi.net/en
-# login required
-
 # Gandi LiveDNS API KEY
-API_KEY="your Gandi LiveDNS key"
+API_KEY="Your API key"
 
 # Domain hosted with Gandi
 DOMAIN="your domain"
@@ -16,21 +16,24 @@ SUBDOMAIN="your subdomain"
 
 # Get external IP address
 EXT_IP=$(curl -s ifconfig.me)  
-
-
-#Get the current Zone for the provided domain
-CURRENT_ZONE_HREF=$(curl -s -H "X-Api-Key: $API_KEY" https://dns.api.gandi.net/api/v5/domains/$DOMAIN | jq -r '.zone_records_href')
-CURRENT_IP_IN_ZONE=$(curl -s -H "X-Api-Key: $API_KEY" "https://dns.api.gandi.net/api/v5/domains/$DOMAIN/records" | jq -r ".[] | select(.rrset_name == \"$SUBDOMAIN\") | .rrset_values[0]")
-
 echo "External IP : " $EXT_IP
 
+
+# Get the current Zone for the provided domain
+CURRENT_ZONE_HREF=$(curl -s -H "X-Api-Key: $API_KEY" https://dns.api.gandi.net/api/v5/domains/$DOMAIN | jq -r '.zone_records_href')
+
+# Get current current IP found in DNS A records
+CURRENT_IP_IN_ZONE=$(curl -s -H "X-Api-Key: $API_KEY" "https://dns.api.gandi.net/api/v5/domains/$DOMAIN/records" | jq -r ".[] | select(.rrset_name == \"$SUBDOMAIN\") | .rrset_values[0]")
+
 if [ "$CURRENT_IP_IN_ZONE" = "" ]; then
-    echo "IP in DNS ZONE : None"
+    echo "IP in DNS ZONE : No DNS record found. Creating one..."
 else
     echo "IP in DNS ZONE : " $CURRENT_IP_IN_ZONE
 fi
+
+# If IP's are the same, nothing to do and exit
 if [ "$CURRENT_IP_IN_ZONE" = "$EXT_IP" ]; then
-    echo "NO CHANGE"
+    echo "No change. Exiting..."
     exit
 fi
 
