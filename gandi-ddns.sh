@@ -19,12 +19,13 @@ SUBDOMAIN="your subdomain"
 EXT_IP=$(curl -s ifconfig.me)  
 echo "External IP : " $EXT_IP
 
-
 # Get the current Zone for the provided domain
-CURRENT_ZONE_HREF=$(curl -s -H "X-Api-Key: $API_KEY" https://dns.api.gandi.net/api/v5/domains/$DOMAIN | jq -r '.zone_records_href')
+CURRENT_ZONE_HREF=$(curl -s -H "X-Api-Key: $API_KEY" https://dns.api.gandi.net/api/v5/domains/$DOMAIN \
+| jq -r '.zone_records_href')
 
 # Get current current IP found in DNS A records
-CURRENT_IP_IN_ZONE=$(curl -s -H "X-Api-Key: $API_KEY" "https://dns.api.gandi.net/api/v5/domains/$DOMAIN/records" | jq -r ".[] | select(.rrset_name == \"$SUBDOMAIN\") | .rrset_values[0]")
+CURRENT_IP_IN_ZONE=$(curl -s -H "X-Api-Key: $API_KEY" "https://dns.api.gandi.net/api/v5/domains/$DOMAIN/records" \
+| jq -r ".[] | select(.rrset_name == \"$SUBDOMAIN\") | .rrset_values[0]")
 
 if [ "$CURRENT_IP_IN_ZONE" = "" ]; then
     echo "IP in DNS ZONE : No DNS record found. Creating one..."
