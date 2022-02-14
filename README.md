@@ -12,7 +12,7 @@ If no entry found for the subdomain, a new A record will be added.
 - **Delete** : `gandi-ddns.sh -d subdomain.domain`
 
 
-### Howto generate yourGandi LiveDNS API key
+### Howto generate your Gandi API key
 https://account.gandi.net/en (login required)
 
 Click on `Security`
