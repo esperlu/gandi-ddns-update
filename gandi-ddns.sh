@@ -2,6 +2,9 @@
 # This script get your current external IP of your router then connects to the Gandi
 # LiveDNS API and updates your subdomain DNS record with your current IP if necessary.
 
+# Howto generate your LiveDNS API key : https://account.gandi.net/en
+# login required
+
 # Gandi LiveDNS API KEY
 API_KEY="your Gandi LiveDNS key"
 
