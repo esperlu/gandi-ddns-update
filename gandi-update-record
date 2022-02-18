@@ -1,0 +1,77 @@
+# This is a script that gets the current external IP of your router then connects to the Gandi
+# API and either 
+#   - updates your subdomain DNS record with your current IP if necessary
+#   - or create a new A record with your current IP if the given subdomain doesn't exist in zone
+
+# Usage : gandi-update-record subdomain.example.com
+
+# Test args
+if [ $# -ne 1 ]; then
+    printf "\nUsage : $ ${0##*/} subdomain.example.com \n\n"
+    exit
+fi
+
+
+# Gandi LiveDNS API KEY
+API_KEY="your API key"
+
+SUBDOMAIN=$(echo $1 | awk -F. '{OFS=".";NF=NF-2; print }')
+DOMAIN=$(echo $1 | awk -F. '{print $(NF-1)"."$NF}')
+
+if [ "$SUBDOMAIN" = "" ];then
+    printf "\n%s\n\n" "Error : No subdomain given. Usage : ${0##*/} subdomain.example.com"
+    exit
+fi
+
+# Get external IP address
+EXT_IP=$(curl -s ifconfig.me)
+
+# Get current IP in record
+CURRENT_IP_IN_RECORD=$(curl -s \
+--url "https://api.gandi.net/v5/livedns/domains/$DOMAIN/records/$SUBDOMAIN" \
+--request GET \
+--header "Authorization: Apikey $API_KEY" \
+| jq -r '.[] | .rrset_values[0]')
+
+printf "\nExternal IP : %s\n" $EXT_IP
+printf "IP in DNS ZONE : %s\n" $CURRENT_IP_IN_RECORD
+
+# If IP's are the same, nothing to do and exit
+if [ "$CURRENT_IP_IN_RECORD" = "$EXT_IP" ]; then
+    printf "No change. Exiting...\n\n"
+    exit
+fi
+
+# If record doesn't exist, create one with current external IP
+if [ "$CURRENT_IP_IN_RECORD" = "" ]; then
+    printf "No DNS record for this subdomain. Creating one...\n"
+    RESPONSE=$(curl -s \
+    --url "https://api.gandi.net/v5/livedns/domains/$DOMAIN/records/$SUBDOMAIN" \
+    --request POST \
+    --header "Content-Type: application/json" \
+    --header "Authorization: Apikey $API_KEY" \
+    --data '{
+                "rrset_type": "A",
+                "rrset_ttl": 1200,
+                "rrset_values": ["'$EXT_IP'"]
+            }' \
+    | jq -r '.message')
+    printf "\n%s\n\n" "$RESPONSE"
+    exit
+fi
+
+# Update the A Record of the subdomain using PUT
+printf "Udating DNS A Record...\n"
+RESPONSE=$(curl -s \
+--url "https://api.gandi.net/v5/livedns/domains/$DOMAIN/records/$SUBDOMAIN/A" \
+--request PUT \
+--header "Content-Type: application/json" \
+--header "Authorization: Apikey $API_KEY" \
+--data '{
+    "rrset_values":["'$EXT_IP'"]
+    }' \
+| jq -r .message)
+
+if [ "$RESPONSE" = "DNS Record Created" ]; then
+    printf "DNS Record Updated\n\n"
+fi

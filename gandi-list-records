@@ -1,0 +1,50 @@
+# This is a script that list all DNS records managed by Gandi
+# If subdomain is given in arg[1], only that record will be listed
+
+# Usage : gandi-list-records example.com
+# Usage : gandi-list-records subdomain.example.com
+
+# Test args
+if [ $# -ne 1 ]; then
+    printf "\nUsage : $ ${0##*/} example.com \n\n"
+    exit
+fi
+
+# Gandi LiveDNS API KEY
+API_KEY="your API key"
+
+# Extract domain name from arg[1]
+SUBDOMAIN=$(echo $1 | awk -F. '{OFS=".";NF=NF-2;print }')
+DOMAIN=$(echo $1 | awk -F. '{print $(NF-1)"."$NF}')
+
+# Get records list for $DOMAIN
+RESPONSE=$(curl -s \
+--url "https://api.gandi.net/v5/livedns/domains/$DOMAIN/records" \
+--request GET \
+--header "Authorization: Apikey $API_KEY")
+
+# echo $RESPONSE | jq
+# exit
+
+# If error message in $RESPONSE (i.e. $DOMAIN not found for this account), exit with error code
+echo $RESPONSE | jq -e 'has("code")' 2>$1 1>/dev/null
+if [ $? -eq 0 ]; then
+    printf "\n%s : %s\n\n" "$DOMAIN" "$(echo $RESPONSE | jq -r '[.code, .message] | join(" - ")')"
+    exit
+fi
+
+# No subdomain given, list all A, AAAA and CNAME records for domain name
+if [ "$SUBDOMAIN" = "" ]; then
+    printf "\n%s\n\n" "$(echo $RESPONSE | jq -r '.[]| select((.rrset_type == "A" or .rrset_type == "AAAA" or .rrset_type == "CNAME")) |
+    [.rrset_name, .rrset_type, .rrset_values[]] | @tsv')"
+
+# List the A, AAAA or CNAME record for the given $SUBDOMAIN
+else
+    RESPONSE=$(echo $RESPONSE | jq -r '.[]| select((.rrset_type == "A" or .rrset_type == "AAAA" or .rrset_type == "CNAME") and .rrset_name == "'$SUBDOMAIN'") |
+    [.rrset_name, .rrset_type, .rrset_values[]] | @tsv')
+    if [ "$RESPONSE" = "" ]; then
+        printf "\nSubdomain \`$SUBDOMAIN\` not found in DNS records\n\n"
+    else 
+        printf "\n%s\n\n" "$RESPONSE"
+    fi
+fi
