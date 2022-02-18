@@ -27,7 +27,7 @@ RESPONSE=$(curl -s \
 # exit
 
 # If error message in $RESPONSE (i.e. $DOMAIN not found for this account), exit with error code
-echo $RESPONSE | jq -e 'has("code")' 2>$1 1>/dev/null
+echo $RESPONSE | jq -e 'has("code")' > /dev/null  2> /dev/null
 if [ $? -eq 0 ]; then
     printf "\n%s : %s\n\n" "$DOMAIN" "$(echo $RESPONSE | jq -r '[.code, .message] | join(" - ")')"
     exit
