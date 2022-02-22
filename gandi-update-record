@@ -15,7 +15,7 @@ fi
 # Gandi LiveDNS API KEY
 API_KEY="your API key"
 
-SUBDOMAIN=$(echo $1 | awk -F. '{OFS=".";NF=NF-2; print }')
+SUBDOMAIN=$(echo $1 | awk -F. '{OFS=".";NF=NF-2;print }')
 DOMAIN=$(echo $1 | awk -F. '{print $(NF-1)"."$NF}')
 
 if [ "$SUBDOMAIN" = "" ];then
@@ -33,45 +33,43 @@ CURRENT_IP_IN_RECORD=$(curl -s \
 --header "Authorization: Apikey $API_KEY" \
 | jq -r '.[] | .rrset_values[0]')
 
-printf "\nExternal IP : %s\n" $EXT_IP
-printf "IP in DNS ZONE : %s\n" $CURRENT_IP_IN_RECORD
+printf "\nExternal IP : %17s\n" $EXT_IP
+printf "IP in DNS record : %s\n" $CURRENT_IP_IN_RECORD
 
 # If IP's are the same, nothing to do and exit
 if [ "$CURRENT_IP_IN_RECORD" = "$EXT_IP" ]; then
     printf "No change. Exiting...\n\n"
-    exit
-fi
-
-# If record doesn't exist, create one with current external IP
-if [ "$CURRENT_IP_IN_RECORD" = "" ]; then
-    printf "No DNS record for this subdomain. Creating one...\n"
-    RESPONSE=$(curl -s \
-    --url "https://api.gandi.net/v5/livedns/domains/$DOMAIN/records/$SUBDOMAIN" \
-    --request POST \
-    --header "Content-Type: application/json" \
-    --header "Authorization: Apikey $API_KEY" \
-    --data '{
-                "rrset_type": "A",
-                "rrset_ttl": 1200,
-                "rrset_values": ["'$EXT_IP'"]
-            }' \
-    | jq -r '.message')
-    printf "\n%s\n\n" "$RESPONSE"
-    exit
+    exit 0
 fi
 
 # Update the A Record of the subdomain using PUT
-printf "Udating DNS A Record...\n"
+# If record doesn't exist, create one with current external IP
+if [ "$CURRENT_IP_IN_RECORD" = "" ]; then
+    printf "Creating DNS A Record...\n"
+    MESSAGE="DNS Record Created"
+else
+    printf "Udating DNS A Record...\n"
+    MESSAGE="DNS Record Updated"
+fi
+
 RESPONSE=$(curl -s \
---url "https://api.gandi.net/v5/livedns/domains/$DOMAIN/records/$SUBDOMAIN/A" \
+--url "https://api.gandi.net/v5/livedns/domains/$DOMAIN/records/$SUBDOMAIN" \
 --request PUT \
 --header "Content-Type: application/json" \
 --header "Authorization: Apikey $API_KEY" \
 --data '{
-    "rrset_values":["'$EXT_IP'"]
-    }' \
-| jq -r .message)
+            "items":[ {
+                "rrset_type":"A",
+                "rrset_ttl":1200,
+                "rrset_values":["'$EXT_IP'"]
+            } ]
+        }' \
+| jq -r '.message') 
 
 if [ "$RESPONSE" = "DNS Record Created" ]; then
-    printf "DNS Record Updated\n\n"
+    printf "%s\n\n" "$MESSAGE"
+else
+    printf "%s\n\n" "$RESPONSE"
 fi
+
+exit 0
